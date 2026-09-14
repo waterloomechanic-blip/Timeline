@@ -1,0 +1,879 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hindsight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #EDF0F2; --surface: #FFFFFF; --surface-2: #F6F8F9;
+    --ink: #16212B; --muted: #5E6B78; --faint: #98A4AF;
+    --line: #C5CDD4; --line-soft: #DDE3E8;
+    --accent: #1F6F78; --accent-ink: #FFFFFF; --accent-soft: #DCEBEC;
+    --danger: #A7412E; --shadow: 0 10px 30px rgba(22, 33, 43, 0.14);
+    --serif: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+    --sans: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #10171D; --surface: #182129; --surface-2: #1F2A33;
+      --ink: #E6ECF0; --muted: #8B98A5; --faint: #5E6B78;
+      --line: #35424D; --line-soft: #2A353F;
+      --accent: #5FB4BD; --accent-ink: #0E1A1C; --accent-soft: #1C3236;
+      --danger: #E07A66; --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 0 96px; }
+
+  /* ---------- gate ---------- */
+  .gate { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+  .gate .panel { width: min(100%, 400px); background: var(--surface); border: 1px solid var(--line-soft); border-radius: 18px; box-shadow: var(--shadow); padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .gate h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: -0.01em; }
+  .gate .lead { margin: 0; color: var(--muted); font-size: 14px; }
+  .gate .warn { margin: 0; font-size: 13px; color: var(--muted); border-left: 3px solid var(--danger); padding-left: 10px; }
+  .gate .foot { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .gate .foot .btn { justify-content: center; }
+  .linkish { border: 0; background: none; padding: 0; font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; align-self: center; }
+  .linkish:hover { color: var(--ink); }
+
+  /* ---------- header ---------- */
+  header.top {
+    position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding-block: 14px 10px; background: color-mix(in srgb, var(--ground) 88%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .brand h1 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 30px; line-height: 1; letter-spacing: -0.01em; }
+  .tools { display: flex; align-items: center; gap: 6px; }
+  .btn {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 7px 13px;
+    font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn:disabled { opacity: 0.6; cursor: default; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); padding-inline: 8px; }
+  .btn.ghost:hover { color: var(--ink); background: var(--surface-2); }
+  .btn.danger { color: var(--danger); }
+  .btn.danger.confirm { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn svg { width: 16px; height: 16px; flex: none; }
+  @media (max-width: 479px) { #sortLabel { display: none; } }
+  @media (max-width: 719px) { #addTop { display: none; } }
+
+  .sub { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-block: 0 12px; flex-wrap: wrap; }
+  .sub .count { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .sub .links { display: flex; gap: 12px; }
+  .sub .links button { border: 0; background: none; padding: 0; font-size: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+  .sub .links button:hover { color: var(--ink); }
+  .status { font-size: 12px; color: var(--muted); padding-block: 0 10px; }
+  .status:empty { display: none; }
+
+  .notice {
+    border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; color: var(--muted); font-size: 13px; margin-block: 0 16px;
+    background: color-mix(in srgb, var(--surface) 60%, transparent); display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  }
+  .notice strong { color: var(--ink); font-weight: 600; }
+  .notice .btn { font-size: 13px; padding: 5px 11px; }
+
+  /* ---------- tree ---------- */
+  .timeline { position: relative; --spine: 24px; }
+  .timeline::before { content: ""; position: absolute; top: 10px; bottom: 6px; left: calc(var(--spine) - 1px); width: 2px; background: var(--line); border-radius: 2px; }
+  .row { position: relative; display: grid; grid-template-columns: calc(var(--spine) * 2) 1fr auto; align-items: center; }
+  .mark { position: absolute; border-radius: 50%; box-shadow: 0 0 0 3px var(--ground); }
+  .head { text-align: left; background: none; border: 0; padding: 0; min-width: 0; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .n { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .n.has { color: var(--accent); font-weight: 500; }
+  .plus { border: 0; background: transparent; color: var(--faint); width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; justify-self: end; }
+  .plus:hover { color: var(--accent); background: var(--accent-soft); }
+  .plus svg { width: 16px; height: 16px; }
+  .chev { width: 16px; height: 16px; color: var(--faint); transition: transform 180ms; flex: none; align-self: center; }
+  .open > .row > .head .chev { transform: rotate(180deg); }
+
+  .year { padding-block: 14px 0; }
+  .year > .row { min-height: 52px; }
+  .year > .row .mark { left: calc(var(--spine) - 7px); width: 14px; height: 14px; background: var(--ground); border: 2px solid var(--line); }
+  .year.has > .row .mark { border-color: var(--accent); }
+  .year.open > .row .mark { background: var(--accent); border-color: var(--accent); }
+  .year h2 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 42px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .year.empty h2 { color: var(--muted); }
+  .year.future h2 { color: var(--faint); }
+
+  .months { padding-block: 6px 4px; }
+  .month > .row { min-height: 40px; }
+  .month > .row .mark { left: calc(var(--spine) - 4px); width: 8px; height: 8px; background: var(--ground); border: 2px solid var(--line); }
+  .month.has > .row .mark { border-color: var(--accent); }
+  .month.open > .row .mark { background: var(--accent); border-color: var(--accent); }
+  .month h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 24px; line-height: 1.1; }
+  .month.empty h3 { color: var(--muted); }
+  .month.future h3 { color: var(--faint); }
+
+  .days { padding-block: 4px 6px; }
+  .day > .row { min-height: 30px; }
+  .day > .row .mark { left: calc(var(--spine) - 3px); width: 6px; height: 6px; background: var(--line); }
+  .day.has > .row .mark { background: var(--accent); }
+  .day.today > .row .mark { background: var(--ink); box-shadow: 0 0 0 3px var(--ground), 0 0 0 5px var(--line); }
+  .day .head { font-size: 13px; color: var(--muted); gap: 8px; min-height: 30px; align-items: center; cursor: pointer; width: 100%; }
+  .day .head .wd { width: 3ch; letter-spacing: 0.04em; text-transform: uppercase; font-size: 11px; color: var(--faint); }
+  .day .head .dn { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 2ch; }
+  .day.empty .head .dn { color: var(--muted); }
+  .day.future .head .dn, .day.future .head .wd { color: var(--faint); }
+  .day .head .tod { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); font-weight: 600; }
+  .day .head .hint { font-size: 12px; color: var(--faint); margin-left: auto; opacity: 0; transition: opacity 120ms; padding-right: 8px; }
+  .day .head:hover .hint, .day .head:focus-visible .hint { opacity: 1; }
+  .day.has .head { cursor: default; }
+
+  .cards { display: grid; gap: 8px; padding-block: 4px 8px; }
+  .year > .cards, .month > .cards, .day .cards { padding-left: calc(var(--spine) * 2); }
+  .day .cards { padding-top: 2px; }
+  .event { position: relative; }
+  .card { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 14px; overflow: hidden; transition: border-color 160ms, box-shadow 160ms; }
+  .event.open .card { border-color: var(--line); box-shadow: var(--shadow); }
+  .ehead { width: 100%; text-align: left; background: none; border: 0; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; column-gap: 12px; align-items: start; }
+  .ehead:hover { background: var(--surface-2); }
+  .ehead .when { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+  .ehead .title { font-family: var(--serif); font-size: 22px; line-height: 1.15; margin-top: 2px; text-wrap: balance; overflow-wrap: anywhere; }
+  .ehead .chev { grid-row: 1 / span 2; align-self: center; width: 18px; height: 18px; color: var(--muted); }
+  .event.open .ehead .chev { transform: rotate(180deg); }
+  .body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 220ms ease; }
+  .event.open .body { grid-template-rows: 1fr; }
+  .body > div { overflow: hidden; }
+  .details { padding: 0 14px 12px; border-top: 1px solid var(--line-soft); }
+  .details .ago { display: inline-block; margin-top: 12px; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .details p { margin: 10px 0 0; white-space: pre-wrap; max-width: 62ch; overflow-wrap: anywhere; }
+  .details p.none { color: var(--muted); font-style: italic; }
+  .actions { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .example-tag { display: inline-block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 8px; vertical-align: middle; font-family: var(--sans); }
+
+  .fab { position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 6; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); display: grid; place-items: center; }
+  .fab svg { width: 24px; height: 24px; }
+  @media (min-width: 720px) { .fab { display: none; } }
+
+  /* ---------- sheets ---------- */
+  dialog.sheet { border: 0; padding: 0; background: var(--surface); color: var(--ink); width: min(100%, 520px); max-width: 100%; margin: auto; border-radius: 18px; box-shadow: var(--shadow); }
+  dialog.sheet::backdrop { background: rgba(10, 16, 22, 0.45); backdrop-filter: blur(2px); }
+  @media (max-width: 719px) { dialog.sheet { margin: auto 0 0; width: 100%; max-height: 92dvh; border-radius: 18px 18px 0 0; } }
+  .sheet form, .sheet .inner { display: flex; flex-direction: column; gap: 14px; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--line); margin: -6px auto 0; }
+  @media (min-width: 720px) { .sheet .grab { display: none; } }
+  .sheet h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 26px; line-height: 1.1; }
+  .sheet h4 { margin: 0; font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; font-weight: 500; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label, .field .lbl { font-size: 12px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .field input, .field textarea { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); width: 100%; font-size: 16px; }
+  .field input:focus, .field textarea:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-soft); }
+  .field textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
+  .field input[type="file"] { padding: 8px 10px; font-size: 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; background: var(--surface-2); align-self: start; }
+  .seg button { border: 0; background: transparent; border-radius: 999px; padding: 5px 12px; font-size: 13px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.12); font-weight: 500; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0; }
+  .err { font-size: 13px; color: var(--danger); margin: 0; }
+  .err:empty { display: none; }
+  .ok { font-size: 13px; color: var(--accent); margin: 0; }
+  .ok:empty { display: none; }
+  .sheet .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .presets .btn { font-size: 13px; padding: 5px 11px; }
+  .section { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line-soft); }
+  .section .rowb { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  @media (prefers-reduced-motion: reduce) { .body, .chev, .card, .hint { transition: none; } }
+</style>
+</head>
+<body>
+
+<!-- ============ lock screen ============ -->
+<div class="gate" id="gate">
+  <form class="panel" id="gateForm" novalidate>
+    <h1>Hindsight</h1>
+    <p class="lead" id="gateLead">Enter your password to open the timeline.</p>
+    <div class="field">
+      <label for="gPass">Password</label>
+      <input id="gPass" type="password" autocomplete="current-password" autofocus>
+    </div>
+    <div class="field" id="gConfirmWrap" hidden>
+      <label for="gConfirm">Confirm password</label>
+      <input id="gConfirm" type="password" autocomplete="new-password">
+    </div>
+    <p class="warn" id="gateWarn" hidden>Your events are encrypted with this password and stored only on this computer. There is no reset — if you forget it, the timeline can't be opened. Keep a backup file somewhere safe.</p>
+    <p class="err" id="gateErr"></p>
+    <div class="foot">
+      <button class="btn primary" type="submit" id="gateBtn">Unlock</button>
+      <button class="linkish" type="button" id="gateRestore">Restore from a backup file instead</button>
+    </div>
+  </form>
+</div>
+
+<!-- ============ app ============ -->
+<div class="wrap" id="app" hidden>
+  <header class="top">
+    <div class="brand"><h1>Hindsight</h1></div>
+    <div class="tools">
+      <button class="btn" id="rangeBtn" type="button" title="Change the span of years">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4"/></svg>
+        <span id="rangeLabel"></span>
+      </button>
+      <button class="btn ghost" id="sortBtn" type="button" title="Flip order">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>
+        <span id="sortLabel">Oldest first</span>
+      </button>
+      <button class="btn ghost" id="settingsBtn" type="button" title="Backup, restore, password, lock" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      </button>
+      <button class="btn primary" id="addTop" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Add event
+      </button>
+    </div>
+  </header>
+  <div class="sub">
+    <span class="count" id="count"></span>
+    <span class="links"><button type="button" id="expandAll">Expand years with events</button><button type="button" id="collapseAll">Collapse all</button></span>
+  </div>
+  <div class="status" id="status"></div>
+  <div id="notice"></div>
+  <section class="timeline" id="timeline"></section>
+</div>
+
+<button class="fab" id="addFab" type="button" aria-label="Add event" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- ============ event sheet ============ -->
+<dialog class="sheet" id="sheet">
+  <form id="form" method="dialog" novalidate>
+    <div class="grab"></div>
+    <h3 id="sheetTitle">Add an event</h3>
+    <div class="field">
+      <label for="fTitle">What happened</label>
+      <input id="fTitle" name="title" type="text" maxlength="120" autocomplete="off" placeholder="Moved to Waterloo">
+    </div>
+    <div class="field">
+      <span class="lbl" id="whenLabel">When</span>
+      <div class="seg" role="group" aria-labelledby="whenLabel">
+        <button type="button" data-p="day" aria-pressed="true">Exact day</button>
+        <button type="button" data-p="month" aria-pressed="false">Month</button>
+        <button type="button" data-p="year" aria-pressed="false">Year only</button>
+      </div>
+      <div class="dates">
+        <input id="fDay" type="date" aria-label="Date">
+        <input id="fMonth" type="month" aria-label="Month and year" hidden>
+        <input id="fYear" type="number" inputmode="numeric" min="1" max="9999" step="1" placeholder="2009" aria-label="Year" hidden>
+      </div>
+      <p class="hint">Pick how precisely you remember it — "Year only" is fine for older memories.</p>
+    </div>
+    <div class="field">
+      <label for="fDetails">Details</label>
+      <textarea id="fDetails" name="details" placeholder="Who was there, what it felt like, what came of it…"></textarea>
+    </div>
+    <p class="err" id="err"></p>
+    <div class="foot">
+      <button class="btn" type="button" id="cancelBtn">Cancel</button>
+      <button class="btn primary" type="submit" id="saveBtn">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ range sheet ============ -->
+<dialog class="sheet" id="rangeSheet">
+  <form id="rangeForm" method="dialog" novalidate>
+    <div class="grab"></div>
+    <h3>Span of years</h3>
+    <div class="two">
+      <div class="field"><label for="rFrom">From</label><input id="rFrom" type="number" inputmode="numeric" min="1" max="9999" step="1"></div>
+      <div class="field"><label for="rTo">To</label><input id="rTo" type="number" inputmode="numeric" min="1" max="9999" step="1"></div>
+    </div>
+    <div class="presets" id="presets">
+      <button class="btn" type="button" data-span="1">This year</button>
+      <button class="btn" type="button" data-span="5">Last 5 years</button>
+      <button class="btn" type="button" data-span="10">Last 10 years</button>
+      <button class="btn" type="button" data-span="25">Last 25 years</button>
+      <button class="btn" type="button" data-span="fit">Fit my events</button>
+    </div>
+    <p class="hint" id="rangeHint"></p>
+    <p class="err" id="rangeErr"></p>
+    <div class="foot">
+      <button class="btn" type="button" id="rangeCancel">Cancel</button>
+      <button class="btn primary" type="submit">Apply</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ============ settings sheet ============ -->
+<dialog class="sheet" id="settingsSheet">
+  <div class="inner">
+    <div class="grab"></div>
+    <h3>Backup &amp; password</h3>
+    <p class="hint">Your timeline is encrypted with your password and kept in this browser on this computer. A backup file is the same encrypted data — keep one in OneDrive, on a USB stick, or wherever you keep important things.</p>
+
+    <div class="section">
+      <h4>Backup</h4>
+      <div class="rowb">
+        <button class="btn primary" type="button" id="backupBtn">Save backup file</button>
+        <span class="hint" id="backupHint"></span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h4>Restore from a backup</h4>
+      <div class="field"><label for="restoreFile">Backup file</label><input id="restoreFile" type="file" accept=".json,application/json"></div>
+      <div class="field"><label for="restorePass">Password the backup was made with</label><input id="restorePass" type="password" autocomplete="off"></div>
+      <div class="rowb">
+        <button class="btn" type="button" id="restoreBtn">Restore (merges with what's here)</button>
+      </div>
+      <p class="err" id="restoreErr"></p>
+      <p class="ok" id="restoreOk"></p>
+    </div>
+
+    <div class="section">
+      <h4>Change password</h4>
+      <div class="field"><label for="cpCurrent">Current password</label><input id="cpCurrent" type="password" autocomplete="current-password"></div>
+      <div class="two">
+        <div class="field"><label for="cpNew">New password</label><input id="cpNew" type="password" autocomplete="new-password"></div>
+        <div class="field"><label for="cpConfirm">Confirm</label><input id="cpConfirm" type="password" autocomplete="new-password"></div>
+      </div>
+      <div class="rowb"><button class="btn" type="button" id="cpBtn">Change password</button></div>
+      <p class="err" id="cpErr"></p>
+      <p class="ok" id="cpOk"></p>
+    </div>
+
+    <div class="section">
+      <div class="rowb">
+        <button class="btn" type="button" id="lockBtn">Lock now</button>
+        <button class="btn ghost" type="button" id="settingsClose">Close</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const LS_VAULT = 'hindsight.vault';
+  const LS_SORT = 'hindsight.sort';
+  const MAX_SPAN = 150;
+  const PBKDF2_ITER = 310000;
+
+  // ---------- state ----------
+  let key = null;          // CryptoKey while unlocked
+  let salt = null;         // Uint8Array for the current vault
+  let events = [];
+  let range = null;
+  let sortAsc = true;
+  const openYears = new Set(), openMonths = new Set(), openEvents = new Set();
+  let autoOpened = false;
+  let pendingDelete = null;
+  let editingId = null;
+  let precision = 'day';
+  let gateMode = 'unlock'; // 'unlock' | 'create'
+
+  const EXAMPLES = [
+    { id: 'ex1', title: 'First day at the shop', date: '2011-06-13', precision: 'day',
+      details: 'Started as an apprentice. Spent the whole first week on brake jobs and learning where every tool lived.', example: true },
+    { id: 'ex2', title: 'Bought the blue pickup', date: '2016-09-01', precision: 'month',
+      details: 'Found it on a lot outside Kitchener. 180,000 km, one owner, cassette deck still worked.', example: true },
+    { id: 'ex3', title: 'Learned to drive', date: '2004-01-01', precision: 'year', details: '', example: true },
+  ];
+
+  try { sortAsc = (localStorage.getItem(LS_SORT) || 'asc') === 'asc'; } catch (e) {}
+
+  // ---------- helpers ----------
+  const uid = () => 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const parts = (iso) => { const [y, m, d] = iso.split('-').map(Number); return { y, m, d }; };
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const daysIn = (y, m) => new Date(y, m, 0).getDate();
+  const pad = (n) => String(n).padStart(2, '0');
+  const NOW = new Date(), NY = NOW.getFullYear(), NM = NOW.getMonth() + 1, ND = NOW.getDate();
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const plusSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+  const chevSvg = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+
+  function fmtWhen(ev) {
+    const { y, m, d } = parts(ev.date);
+    if (ev.precision === 'year') return String(y);
+    if (ev.precision === 'month') return `${MONTHS[m - 1]} ${y}`;
+    return `${d} ${MONTHS[m - 1]} ${y}`;
+  }
+  function ago(ev) {
+    const { y, m, d } = parts(ev.date);
+    if (ev.precision === 'year') {
+      const yrs = NY - y;
+      if (yrs < 0) return `${plural(-yrs, 'year')} from now`;
+      if (yrs === 0) return 'This year';
+      return `${plural(yrs, 'year')} ago`;
+    }
+    let months = (NY - y) * 12 + (NM - m);
+    if (ev.precision === 'day' && ND < d) months -= 1;
+    if (months < 0) return 'Upcoming';
+    if (months === 0) {
+      if (ev.precision === 'month') return 'This month';
+      const days = Math.round((new Date(NY, NM - 1, ND) - new Date(y, m - 1, d)) / 86400000);
+      if (days === 0) return 'Today';
+      if (days === 1) return 'Yesterday';
+      return `${days} days ago`;
+    }
+    const yrs = Math.floor(months / 12), rem = months % 12;
+    if (yrs === 0) return `${plural(months, 'month')} ago`;
+    return rem ? `${plural(yrs, 'year')}, ${plural(rem, 'month')} ago` : `${plural(yrs, 'year')} ago`;
+  }
+  function setStatus(msg) { $('status').textContent = msg || ''; }
+
+  // ---------- crypto ----------
+  const te = new TextEncoder(), td = new TextDecoder();
+  const b64 = (u8) => btoa(String.fromCharCode(...u8));
+  const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const subtle = (window.crypto && window.crypto.subtle) || null;
+
+  async function deriveKey(password, saltBytes) {
+    const base = await subtle.importKey('raw', te.encode(password), 'PBKDF2', false, ['deriveKey']);
+    return subtle.deriveKey({ name: 'PBKDF2', salt: saltBytes, iterations: PBKDF2_ITER, hash: 'SHA-256' }, base,
+      { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  }
+  async function encryptPayload(k, saltBytes, obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ct = await subtle.encrypt({ name: 'AES-GCM', iv }, k, te.encode(JSON.stringify(obj)));
+    return { app: 'hindsight', v: 1, kdf: 'PBKDF2-SHA256', iter: PBKDF2_ITER, salt: b64(saltBytes), iv: b64(iv), data: b64(new Uint8Array(ct)) };
+  }
+  async function decryptVault(vault, password) {
+    const saltBytes = unb64(vault.salt);
+    const k = await deriveKey(password, saltBytes);
+    const pt = await subtle.decrypt({ name: 'AES-GCM', iv: unb64(vault.iv) }, k, unb64(vault.data)); // throws on wrong password
+    return { key: k, salt: saltBytes, payload: JSON.parse(td.decode(pt)) };
+  }
+  function readVault() {
+    try { const raw = localStorage.getItem(LS_VAULT); if (!raw) return null; const v = JSON.parse(raw); return v && v.salt && v.iv && v.data ? v : null; } catch (e) { return null; }
+  }
+  async function saveVault() {
+    if (!key) return;
+    const vault = await encryptPayload(key, salt, { events, range, savedAt: new Date().toISOString() });
+    try { localStorage.setItem(LS_VAULT, JSON.stringify(vault)); }
+    catch (e) { setStatus('Could not save — the browser refused storage. Save a backup file now.'); }
+  }
+
+  // ---------- gate ----------
+  function showGate(mode) {
+    gateMode = mode;
+    $('gateLead').textContent = mode === 'create' ? 'Choose a password to protect your timeline.' : 'Enter your password to open the timeline.';
+    $('gConfirmWrap').hidden = mode !== 'create';
+    $('gateWarn').hidden = mode !== 'create';
+    $('gateBtn').textContent = mode === 'create' ? 'Create & open' : 'Unlock';
+    $('gateErr').textContent = '';
+    $('gPass').value = ''; $('gConfirm').value = '';
+    $('app').hidden = true; $('addFab').hidden = true; $('gate').hidden = false;
+    setTimeout(() => $('gPass').focus(), 30);
+  }
+  function showApp() {
+    $('gate').hidden = true; $('app').hidden = false; $('addFab').hidden = false;
+    render();
+  }
+  function lock() {
+    key = null; salt = null; events = []; range = null; autoOpened = false;
+    openYears.clear(); openMonths.clear(); openEvents.clear();
+    $('timeline').innerHTML = '';
+    showGate(readVault() ? 'unlock' : 'create');
+  }
+
+  $('gateForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pass = $('gPass').value;
+    const btn = $('gateBtn');
+    $('gateErr').textContent = '';
+    if (!subtle) { $('gateErr').textContent = 'This browser cannot encrypt here. Open the file in Chrome, Edge or Firefox.'; return; }
+    if (!pass) { $('gateErr').textContent = 'Enter a password.'; return; }
+    btn.disabled = true;
+    try {
+      if (gateMode === 'create') {
+        if (pass.length < 6) { $('gateErr').textContent = 'Use at least 6 characters.'; return; }
+        if (pass !== $('gConfirm').value) { $('gateErr').textContent = 'The two passwords don\'t match.'; return; }
+        btn.textContent = 'Setting up…';
+        salt = crypto.getRandomValues(new Uint8Array(16));
+        key = await deriveKey(pass, salt);
+        events = []; range = null;
+        await saveVault();
+        showApp();
+      } else {
+        btn.textContent = 'Unlocking…';
+        const vault = readVault();
+        if (!vault) { showGate('create'); return; }
+        let out;
+        try { out = await decryptVault(vault, pass); }
+        catch (err) { $('gateErr').textContent = 'Wrong password.'; $('gPass').select(); return; }
+        key = out.key; salt = out.salt;
+        events = Array.isArray(out.payload.events) ? out.payload.events : [];
+        range = out.payload.range && Number.isInteger(out.payload.range.from) ? out.payload.range : null;
+        showApp();
+      }
+    } finally { btn.disabled = false; btn.textContent = gateMode === 'create' ? 'Create & open' : 'Unlock'; }
+  });
+  $('gateRestore').addEventListener('click', () => { $('settingsSheet').showModal(); $('restoreFile').focus(); });
+
+  // ---------- storage ops ----------
+  async function persist(ev) {
+    const i = events.findIndex((x) => x.id === ev.id);
+    if (i >= 0) events[i] = ev; else events.push(ev);
+    await saveVault(); render();
+  }
+  async function remove(id) { events = events.filter((x) => x.id !== id); await saveVault(); render(); }
+  async function saveRange(r) { range = r; await saveVault(); render(); }
+
+  // ---------- range ----------
+  function effectiveRange(list) {
+    if (range) return range;
+    const ys = list.map((e) => parts(e.date).y);
+    if (!ys.length) return { from: NY - 9, to: NY };
+    return { from: Math.min(...ys), to: Math.max(...ys, NY) };
+  }
+  function fitRange(list) {
+    const ys = list.map((e) => parts(e.date).y);
+    if (!ys.length) return { from: NY - 9, to: NY };
+    return { from: Math.min(...ys), to: Math.max(...ys) };
+  }
+
+  // ---------- render ----------
+  function index(list) {
+    const idx = {};
+    for (const ev of list) {
+      const { y, m, d } = parts(ev.date);
+      const Y = idx[y] || (idx[y] = { count: 0, own: [], months: {} });
+      Y.count++;
+      if (ev.precision === 'year') { Y.own.push(ev); continue; }
+      const M = Y.months[m] || (Y.months[m] = { count: 0, own: [], days: {} });
+      M.count++;
+      if (ev.precision === 'month') { M.own.push(ev); continue; }
+      (M.days[d] || (M.days[d] = [])).push(ev);
+    }
+    return idx;
+  }
+  const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt || 0) - (b.createdAt || 0));
+  function ordered(arr) { arr.sort(byDate); if (!sortAsc) arr.reverse(); return arr; }
+  function seq(from, to) { const a = []; for (let i = from; i <= to; i++) a.push(i); return sortAsc ? a : a.reverse(); }
+
+  function renderEvent(ev) {
+    const isOpen = openEvents.has(ev.id);
+    const hasDetails = ev.details && ev.details.trim();
+    return `
+      <div class="event${isOpen ? ' open' : ''}" data-id="${esc(ev.id)}">
+        <div class="card">
+          <button class="ehead" type="button" aria-expanded="${isOpen}" data-act="toggle">
+            <span class="when">${esc(fmtWhen(ev))}</span>
+            <span class="title">${esc(ev.title)}${ev.example ? '<span class="example-tag">Example</span>' : ''}</span>
+            ${chevSvg}
+          </button>
+          <div class="body"><div>
+            <div class="details">
+              <span class="ago">${esc(ago(ev))}</span>
+              ${hasDetails ? `<p>${esc(ev.details)}</p>` : `<p class="none">No details yet.</p>`}
+              ${ev.example ? '' : `
+              <div class="actions">
+                <button class="btn" type="button" data-act="edit">${hasDetails ? 'Edit' : 'Add details'}</button>
+                <button class="btn danger${pendingDelete === ev.id ? ' confirm' : ''}" type="button" data-act="delete">${pendingDelete === ev.id ? 'Tap again to delete' : 'Delete'}</button>
+              </div>`}
+            </div>
+          </div></div>
+        </div>
+      </div>`;
+  }
+  const cards = (arr) => arr.length ? `<div class="cards">${ordered(arr.slice()).map(renderEvent).join('')}</div>` : '';
+
+  function renderDay(y, m, d, evs) {
+    const has = evs.length > 0;
+    const isToday = y === NY && m === NM && d === ND;
+    const future = new Date(y, m - 1, d) > NOW;
+    const wd = WD[new Date(y, m - 1, d).getDay()];
+    const date = `${y}-${pad(m)}-${pad(d)}`;
+    const head = has
+      ? `<div class="head"><span class="wd">${wd}</span><span class="dn">${d}</span>${isToday ? '<span class="tod">Today</span>' : ''}</div>`
+      : `<button class="head" type="button" data-act="addAt" data-p="day" data-date="${date}"><span class="wd">${wd}</span><span class="dn">${d}</span>${isToday ? '<span class="tod">Today</span>' : ''}<span class="hint">Add event</span></button>`;
+    return `<div class="day${has ? ' has' : ' empty'}${isToday ? ' today' : ''}${future ? ' future' : ''}">
+      <div class="row"><span class="mark" aria-hidden="true"></span>${head}<span></span></div>
+      ${cards(evs)}
+    </div>`;
+  }
+  function renderMonth(y, m, node) {
+    const k = `${y}-${m}`, isOpen = openMonths.has(k), n = node ? node.count : 0;
+    const future = y > NY || (y === NY && m > NM);
+    let kids = '';
+    if (isOpen) {
+      kids = cards(node ? node.own : []);
+      kids += `<div class="days">${seq(1, daysIn(y, m)).map((d) => renderDay(y, m, d, node && node.days[d] ? node.days[d] : [])).join('')}</div>`;
+    }
+    return `<div class="month${isOpen ? ' open' : ''}${n ? ' has' : ' empty'}${future ? ' future' : ''}">
+      <div class="row">
+        <span class="mark" aria-hidden="true"></span>
+        <button class="head" type="button" aria-expanded="${isOpen}" data-act="month" data-key="${k}">
+          <h3>${MONTHS[m - 1]}</h3><span class="n${n ? ' has' : ''}">${n ? plural(n, 'event') : ''}</span>${chevSvg}
+        </button>
+        <button class="plus" type="button" data-act="addAt" data-p="month" data-date="${y}-${pad(m)}-01" aria-label="Add event in ${MONTHS[m - 1]} ${y}">${plusSvg}</button>
+      </div>
+      ${kids}
+    </div>`;
+  }
+  function renderYear(y, node) {
+    const isOpen = openYears.has(y), n = node ? node.count : 0;
+    let kids = '';
+    if (isOpen) {
+      kids = cards(node ? node.own : []);
+      kids += `<div class="months">${seq(1, 12).map((m) => renderMonth(y, m, node ? node.months[m] : null)).join('')}</div>`;
+    }
+    return `<div class="year${isOpen ? ' open' : ''}${n ? ' has' : ' empty'}${y > NY ? ' future' : ''}">
+      <div class="row">
+        <span class="mark" aria-hidden="true"></span>
+        <button class="head" type="button" aria-expanded="${isOpen}" data-act="year" data-y="${y}">
+          <h2>${y}</h2><span class="n${n ? ' has' : ''}">${n ? plural(n, 'event') : (isOpen ? '' : 'nothing yet')}</span>${chevSvg}
+        </button>
+        <button class="plus" type="button" data-act="addAt" data-p="year" data-date="${y}-01-01" aria-label="Add event in ${y}">${plusSvg}</button>
+      </div>
+      ${kids}
+    </div>`;
+  }
+
+  function render() {
+    if (!key) return;
+    const real = events.slice();
+    const showingExamples = real.length === 0;
+    const list = showingExamples ? EXAMPLES.slice() : real;
+    const idx = index(list);
+    const r = effectiveRange(list);
+
+    if (!autoOpened && list.length) { autoOpened = true; for (const ev of list) openYears.add(parts(ev.date).y); }
+
+    $('rangeLabel').textContent = `${r.from} – ${r.to}`;
+    $('sortLabel').textContent = sortAsc ? 'Oldest first' : 'Newest first';
+    const span = r.to - r.from + 1;
+    $('count').textContent = `${real.length ? plural(real.length, 'event') + ' · ' : ''}${plural(span, 'year')}`;
+
+    const outside = list.filter((e) => { const y = parts(e.date).y; return y < r.from || y > r.to; });
+    const notice = $('notice');
+    if (showingExamples) {
+      notice.innerHTML = `<div class="notice"><span><strong>These three are examples</strong> so you can see how it works. Add your first real event and they'll step aside.</span></div>`;
+    } else if (outside.length) {
+      notice.innerHTML = `<div class="notice"><span><strong>${plural(outside.length, 'event')}</strong> fall outside ${r.from} – ${r.to}.</span><button class="btn" type="button" id="widen">Widen the span to include them</button></div>`;
+    } else notice.innerHTML = '';
+
+    $('timeline').innerHTML = seq(r.from, r.to).map((y) => renderYear(y, idx[y])).join('');
+  }
+
+  // ---------- interactions ----------
+  $('timeline').addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const act = btn.dataset.act;
+    if (act === 'year') { const y = +btn.dataset.y; openYears.has(y) ? openYears.delete(y) : openYears.add(y); render(); return; }
+    if (act === 'month') { const k = btn.dataset.key; openMonths.has(k) ? openMonths.delete(k) : openMonths.add(k); render(); return; }
+    if (act === 'addAt') { openSheet(null, { precision: btn.dataset.p, date: btn.dataset.date }); return; }
+    const row = btn.closest('.event'); if (!row) return;
+    const id = row.dataset.id;
+    if (act === 'toggle') {
+      openEvents.has(id) ? openEvents.delete(id) : openEvents.add(id);
+      if (pendingDelete && pendingDelete !== id) pendingDelete = null;
+      row.classList.toggle('open', openEvents.has(id));
+      btn.setAttribute('aria-expanded', openEvents.has(id));
+      return;
+    }
+    if (act === 'edit') { openSheet(events.find((x) => x.id === id)); return; }
+    if (act === 'delete') {
+      if (pendingDelete !== id) { pendingDelete = id; render(); return; }
+      pendingDelete = null; openEvents.delete(id);
+      await remove(id);
+    }
+  });
+  $('notice').addEventListener('click', (e) => {
+    if (e.target.id !== 'widen') return;
+    const r = effectiveRange(events), f = fitRange(events);
+    saveRange({ from: Math.min(r.from, f.from), to: Math.max(r.to, f.to) });
+  });
+  $('sortBtn').addEventListener('click', () => {
+    sortAsc = !sortAsc;
+    try { localStorage.setItem(LS_SORT, sortAsc ? 'asc' : 'desc'); } catch (e) {}
+    render();
+  });
+  $('expandAll').addEventListener('click', () => {
+    const list = events.length ? events : EXAMPLES;
+    for (const ev of list) { const { y, m } = parts(ev.date); openYears.add(y); if (ev.precision !== 'year') openMonths.add(`${y}-${m}`); }
+    render();
+  });
+  $('collapseAll').addEventListener('click', () => { openYears.clear(); openMonths.clear(); render(); });
+
+  // ---------- event sheet ----------
+  const sheet = $('sheet');
+  function setPrecision(p) {
+    precision = p;
+    for (const b of document.querySelectorAll('#form .seg button')) b.setAttribute('aria-pressed', String(b.dataset.p === p));
+    $('fDay').hidden = p !== 'day'; $('fMonth').hidden = p !== 'month'; $('fYear').hidden = p !== 'year';
+  }
+  document.querySelector('#form .seg').addEventListener('click', (e) => { const b = e.target.closest('button[data-p]'); if (b) setPrecision(b.dataset.p); });
+  function fillDate(iso, p) {
+    const { y, m, d } = parts(iso);
+    setPrecision(p);
+    $('fDay').value = `${y}-${pad(m)}-${pad(d)}`; $('fMonth').value = `${y}-${pad(m)}`; $('fYear').value = String(y);
+  }
+  function openSheet(ev, preset) {
+    editingId = ev ? ev.id : null;
+    $('sheetTitle').textContent = ev ? 'Edit event' : (preset ? `Add an event · ${fmtWhen({ date: preset.date, precision: preset.precision })}` : 'Add an event');
+    $('fTitle').value = ev ? ev.title : '';
+    $('fDetails').value = ev ? (ev.details || '') : '';
+    $('err').textContent = '';
+    $('fDay').value = ''; $('fMonth').value = ''; $('fYear').value = '';
+    if (ev) fillDate(ev.date, ev.precision || 'day');
+    else if (preset) fillDate(preset.date, preset.precision);
+    else setPrecision('day');
+    sheet.showModal();
+    setTimeout(() => $('fTitle').focus(), 30);
+  }
+  $('addTop').addEventListener('click', () => openSheet(null));
+  $('addFab').addEventListener('click', () => openSheet(null));
+  $('cancelBtn').addEventListener('click', () => sheet.close());
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+
+  function readDate() {
+    if (precision === 'day') { const v = $('fDay').value; return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
+    if (precision === 'month') { const v = $('fMonth').value; return /^\d{4}-\d{2}$/.test(v) ? v + '-01' : null; }
+    const y = parseInt($('fYear').value, 10);
+    return Number.isInteger(y) && y >= 1 && y <= 9999 ? `${String(y).padStart(4, '0')}-01-01` : null;
+  }
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = $('fTitle').value.trim();
+    const date = readDate();
+    const details = $('fDetails').value.trim();
+    if (!title) { $('err').textContent = 'Give the event a name.'; $('fTitle').focus(); return; }
+    if (!date) { $('err').textContent = precision === 'year' ? 'Enter a four-digit year.' : 'Pick a date.'; return; }
+    const existing = editingId ? events.find((x) => x.id === editingId) : null;
+    const ev = { id: editingId || uid(), title, date, precision, details, createdAt: existing ? existing.createdAt : Date.now() };
+    $('saveBtn').disabled = true;
+    try {
+      const { y, m } = parts(date);
+      openYears.add(y); if (precision !== 'year') openMonths.add(`${y}-${m}`); openEvents.add(ev.id);
+      await persist(ev);
+      sheet.close();
+    } finally { $('saveBtn').disabled = false; }
+  });
+
+  // ---------- range sheet ----------
+  const rangeSheet = $('rangeSheet');
+  function rangeHint() {
+    const f = parseInt($('rFrom').value, 10), t = parseInt($('rTo').value, 10);
+    $('rangeHint').textContent = (Number.isInteger(f) && Number.isInteger(t) && t >= f) ? `${plural(t - f + 1, 'year')} on the timeline.` : '';
+  }
+  $('rangeBtn').addEventListener('click', () => {
+    const r = effectiveRange(events.length ? events : EXAMPLES);
+    $('rFrom').value = r.from; $('rTo').value = r.to; $('rangeErr').textContent = ''; rangeHint();
+    rangeSheet.showModal();
+  });
+  $('rFrom').addEventListener('input', rangeHint); $('rTo').addEventListener('input', rangeHint);
+  $('presets').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-span]'); if (!b) return;
+    if (b.dataset.span === 'fit') { const f = fitRange(events.length ? events : EXAMPLES); $('rFrom').value = f.from; $('rTo').value = f.to; }
+    else { const n = +b.dataset.span; $('rFrom').value = NY - n + 1; $('rTo').value = NY; }
+    rangeHint();
+  });
+  $('rangeCancel').addEventListener('click', () => rangeSheet.close());
+  rangeSheet.addEventListener('click', (e) => { if (e.target === rangeSheet) rangeSheet.close(); });
+  $('rangeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const f = parseInt($('rFrom').value, 10), t = parseInt($('rTo').value, 10);
+    if (!Number.isInteger(f) || !Number.isInteger(t) || f < 1 || t > 9999) { $('rangeErr').textContent = 'Enter two four-digit years.'; return; }
+    if (t < f) { $('rangeErr').textContent = '"To" must be the same year as "From" or later.'; return; }
+    if (t - f + 1 > MAX_SPAN) { $('rangeErr').textContent = `Keep the span to ${MAX_SPAN} years or fewer.`; return; }
+    rangeSheet.close();
+    saveRange({ from: f, to: t });
+  });
+
+  // ---------- settings: backup / restore / password / lock ----------
+  const settings = $('settingsSheet');
+  $('settingsBtn').addEventListener('click', () => {
+    for (const id of ['restoreErr', 'restoreOk', 'cpErr', 'cpOk']) $(id).textContent = '';
+    $('backupHint').textContent = key ? `${plural(events.length, 'event')} will be included.` : 'Unlock first to save a backup.';
+    $('backupBtn').disabled = !key; $('cpBtn').disabled = !key;
+    settings.showModal();
+  });
+  $('settingsClose').addEventListener('click', () => settings.close());
+  settings.addEventListener('click', (e) => { if (e.target === settings) settings.close(); });
+
+  $('backupBtn').addEventListener('click', async () => {
+    if (!key) return;
+    const vault = await encryptPayload(key, salt, { events, range, savedAt: new Date().toISOString() });
+    const blob = new Blob([JSON.stringify(vault, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `hindsight-backup-${NY}-${pad(NM)}-${pad(ND)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    $('backupHint').textContent = 'Saved to your Downloads folder.';
+  });
+
+  $('restoreBtn').addEventListener('click', async () => {
+    $('restoreErr').textContent = ''; $('restoreOk').textContent = '';
+    const file = $('restoreFile').files[0];
+    const pass = $('restorePass').value;
+    if (!file) { $('restoreErr').textContent = 'Choose a backup file.'; return; }
+    if (!pass) { $('restoreErr').textContent = 'Enter the password the backup was made with.'; return; }
+    let vault;
+    try { vault = JSON.parse(await file.text()); if (!vault || !vault.salt || !vault.iv || !vault.data) throw 0; }
+    catch (e) { $('restoreErr').textContent = 'That file isn\'t a Hindsight backup.'; return; }
+    let out;
+    try { out = await decryptVault(vault, pass); }
+    catch (e) { $('restoreErr').textContent = 'Wrong password for this backup.'; return; }
+    const incoming = Array.isArray(out.payload.events) ? out.payload.events : [];
+    if (!key) {
+      // Fresh machine or locked: the backup's password becomes this vault's password.
+      key = out.key; salt = out.salt; events = incoming;
+      range = out.payload.range && Number.isInteger(out.payload.range.from) ? out.payload.range : null;
+      await saveVault();
+      settings.close();
+      showApp();
+      return;
+    }
+    let added = 0;
+    for (const ev of incoming) { if (!events.some((x) => x.id === ev.id)) { events.push(ev); added++; } }
+    if (!range && out.payload.range) range = out.payload.range;
+    await saveVault(); render();
+    $('restoreOk').textContent = added ? `Restored ${plural(added, 'event')}.` : 'Nothing new — every event in that backup is already here.';
+    $('restoreFile').value = ''; $('restorePass').value = '';
+  });
+
+  $('cpBtn').addEventListener('click', async () => {
+    $('cpErr').textContent = ''; $('cpOk').textContent = '';
+    if (!key) return;
+    const cur = $('cpCurrent').value, nw = $('cpNew').value, cf = $('cpConfirm').value;
+    const vault = readVault();
+    try { if (!vault) throw 0; await decryptVault(vault, cur); }
+    catch (e) { $('cpErr').textContent = 'Current password is wrong.'; return; }
+    if (nw.length < 6) { $('cpErr').textContent = 'Use at least 6 characters for the new password.'; return; }
+    if (nw !== cf) { $('cpErr').textContent = 'The new passwords don\'t match.'; return; }
+    salt = crypto.getRandomValues(new Uint8Array(16));
+    key = await deriveKey(nw, salt);
+    await saveVault();
+    $('cpCurrent').value = ''; $('cpNew').value = ''; $('cpConfirm').value = '';
+    $('cpOk').textContent = 'Password changed. Old backup files still open with the old password.';
+  });
+
+  $('lockBtn').addEventListener('click', () => { settings.close(); lock(); });
+
+  // ---------- boot ----------
+  if (!subtle) {
+    showGate('unlock');
+    $('gateErr').textContent = 'This browser can\'t encrypt here. Open the file in Chrome, Edge or Firefox.';
+  } else {
+    showGate(readVault() ? 'unlock' : 'create');
+  }
+})();
+</script>
+</body>
+</html>
